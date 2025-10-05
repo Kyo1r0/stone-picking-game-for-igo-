@@ -9,7 +9,7 @@ int main() {
     for (int m : board.get_legal_moves()) std::cout << m << " ";
     std::cout << "\n";
 
-    auto [new_board, captured] = board.make_move(0);
+    auto [new_board, captured] = board.make_move(0); 
     std::cout << "After move 0, captured? " << (captured ? "Yes" : "No") << "\n";
     std::cout << "New board: ";
     for (int x : new_board.board) std::cout << x << " ";
