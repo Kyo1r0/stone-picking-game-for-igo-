@@ -1,57 +1,75 @@
 #include "MiniGo1x3.h"
 #include <sstream>
 
-MiniGo1x3::MiniGo1x3(const std::vector<int>& b, int p)
-    : board(b), player(p) {}
+MiniGo1x3::MiniGo1x3(const std::vector<int>& board_, int player_) :
+    board(board_), player_to_move(player_) {}
 
-// 盤面＋手番から一意のキー文字列を作成
-std::string MiniGo1x3::make_key(int player) const {
-    std::ostringstream oss;
-    oss << player << ":";
-    for (int v : board) {
-        oss << v;
+bool MiniGo1x3::will_capture(int pos) const {
+    int opponent = -player_to_move;
+    // 左隣
+    if (pos > 0 && board[pos - 1] == opponent) {
+        bool left_liberty = false;
+        if (pos - 2 < 0 || board[pos - 2] == 0) left_liberty = true;
+        if (!left_liberty) return true;
     }
-    return oss.str();
+    // 右隣
+    if (pos < 2 && board[pos + 1] == opponent) {
+        bool right_liberty = false;
+        if (pos + 2 > 2 || board[pos + 2] == 0) right_liberty = true;
+        if (!right_liberty) return true;
+    }
+    return false;
 }
 
-// 呼吸点の簡易判定
-int MiniGo1x3::get_liberty(int index, int color) const {
-    int liberty = 0;
-    if (index > 0 && board[index-1] != color) liberty++;
-    if (index < 2 && board[index+1] != color) liberty++;
-    return liberty;
-}
-
-// 自殺手を考慮して合法手を返す
 std::vector<int> MiniGo1x3::get_legal_moves() const {
-    std::vector<int> moves;
+    std::vector<int> legal;
     for (int i = 0; i < 3; ++i) {
-        if (board[i] != 0) continue; // 空でない
-        // 仮置きして呼吸点確認
-        std::vector<int> tmp_board = board;
-        tmp_board[i] = player;
+        if (board[i] != 0) continue;
+        MiniGo1x3 temp(*this);
+        auto [new_board, captured] = temp.make_move(i);
         bool suicide = true;
-        if (get_liberty(i, player) > 0) suicide = false;
-        if (suicide) continue;
-        moves.push_back(i);
+        for (int j = 0; j < 3; ++j) {
+            if (new_board.board[j] == player_to_move) suicide = false;
+        }
+        if (!suicide || captured) legal.push_back(i);
     }
-    return moves;
+    return legal;
 }
 
-// 石を置く処理（簡易版）
 std::pair<MiniGo1x3, bool> MiniGo1x3::make_move(int move) const {
-    std::vector<int> new_board = board;
-    new_board[move] = player;
+    MiniGo1x3 new_board(*this);
+    new_board.board[move] = player_to_move;
+
     bool captured = false;
-    // 左右の相手石をチェック
-    for (int dir : {-1,1}) {
-        int idx = move + dir;
-        if (idx < 0 || idx > 2) continue;
-        if (new_board[idx] == -player && get_liberty(idx, -player) == 0) {
-            new_board[idx] = 0;
+    int opponent = -player_to_move;
+
+    // 左の石を取る
+    if (move > 0 && new_board.board[move - 1] == opponent) {
+        bool left_liberty = false;
+        if (move - 2 < 0 || new_board.board[move - 2] == 0) left_liberty = true;
+        if (!left_liberty) {
+            new_board.board[move - 1] = 0;
             captured = true;
         }
     }
-    MiniGo1x3 next(new_board, -player);
-    return {next, captured};
+
+    // 右の石を取る
+    if (move < 2 && new_board.board[move + 1] == opponent) {
+        bool right_liberty = false;
+        if (move + 2 > 2 || new_board.board[move + 2] == 0) right_liberty = true;
+        if (!right_liberty) {
+            new_board.board[move + 1] = 0;
+            captured = true;
+        }
+    }
+
+    new_board.player_to_move = opponent;
+    return {new_board, captured};
+}
+
+std::string MiniGo1x3::make_key(int player) const {
+    std::ostringstream oss;
+    oss << player << ":";
+    for (int x : board) oss << x;
+    return oss.str();
 }
