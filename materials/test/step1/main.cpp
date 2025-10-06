@@ -18,6 +18,6 @@ int main() {
     Solver solver;
     GameNode* root = solver.solve(board, 1);
     std::cout << "Number of nodes explored: " << solver.memo.size() << "\n";
-
+    
     return 0;
 }
