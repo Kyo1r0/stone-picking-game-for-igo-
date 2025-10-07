@@ -25,14 +25,14 @@ GameNode* Solver::_find_value(const MiniGo1x3& game) {
     auto moves = game.get_legal_moves();
     if (moves.empty()) {
         // 終局
-        node_ptr->game_value = "L";  // 合法手なしで負け
-        node_ptr->outcome_class = "L";
+        node_ptr->game_value = "UNKNOWN";  // 合法手なしで負け
+        node_ptr->outcome_class = "P";
         node_ptr->is_optimal = false;
         return node_ptr;
     }
 
 
-    
+    //再帰呼び出し
     std::vector<GameNode*> child_nodes;
     for (int m : moves) {
         auto [next_game, captured] = game.make_move(m);
@@ -42,8 +42,11 @@ GameNode* Solver::_find_value(const MiniGo1x3& game) {
         child_nodes.push_back(child_node);
     }
 
+
+
     // 勝敗・最善手判定（1×3用の簡単ルール）
     // 捕獲が起こる手があれば、自分勝利（"P"）
+    /* 後に実装
     bool found_win = false;
     for (GameNode* child : child_nodes) {
         if (child->outcome_class == "L") { // 相手が負ける手がある → 自分勝ち
@@ -54,6 +57,13 @@ GameNode* Solver::_find_value(const MiniGo1x3& game) {
     }
     node_ptr->game_value = found_win ? "P" : "N";
     node_ptr->outcome_class = found_win ? "P" : "N";
+    */
+ 
+    //とりあえず,UNKNOWNで対応
+    node_ptr->game_value = "UNKNOWN";
+    node_ptr->outcome_class = "UNKNOWN";
+    node_ptr->is_optimal = false; // 最善手かどうかも不明なためfalseに設定
+
 
     return node_ptr;
 }
