@@ -1,0 +1,99 @@
+{
+  "nodes": {
+    "-1:001": {
+      "id": "-1:001",
+      "board_state": [0, 0, 1],
+      "player_to_move": -1,
+      "game_value": "UNKNOWN",
+      "outcome_class": "UNKNOWN",
+      "is_optimal": false,
+      "children": {
+        "0": "1:-101",
+        "1": "1:0-10"
+      }
+    },
+    "-1:010": {
+      "id": "-1:010",
+      "board_state": [0, 1, 0],
+      "player_to_move": -1,
+      "game_value": "UNKNOWN",
+      "outcome_class": "P",
+      "is_optimal": false,
+      "children": {}
+    },
+    "-1:011": {
+      "id": "-1:011",
+      "board_state": [0, 1, 1],
+      "player_to_move": -1,
+      "game_value": "UNKNOWN",
+      "outcome_class": "P",
+      "is_optimal": false,
+      "children": {}
+    },
+    "-1:100": {
+      "id": "-1:100",
+      "board_state": [1, 0, 0],
+      "player_to_move": -1,
+      "game_value": "UNKNOWN",
+      "outcome_class": "UNKNOWN",
+      "is_optimal": false,
+      "children": {
+        "1": "1:0-10",
+        "2": "1:10-1"
+      }
+    },
+    "-1:110": {
+      "id": "-1:110",
+      "board_state": [1, 1, 0],
+      "player_to_move": -1,
+      "game_value": "UNKNOWN",
+      "outcome_class": "P",
+      "is_optimal": false,
+      "children": {}
+    },
+    "1:-101": {
+      "id": "1:-101",
+      "board_state": [-1, 0, 1],
+      "player_to_move": 1,
+      "game_value": "UNKNOWN",
+      "outcome_class": "UNKNOWN",
+      "is_optimal": false,
+      "children": {
+        "1": "-1:011"
+      }
+    },
+    "1:0-10": {
+      "id": "1:0-10",
+      "board_state": [0, -1, 0],
+      "player_to_move": 1,
+      "game_value": "UNKNOWN",
+      "outcome_class": "P",
+      "is_optimal": false,
+      "children": {}
+    },
+    "1:000": {
+      "id": "1:000",
+      "board_state": [0, 0, 0],
+      "player_to_move": 1,
+      "game_value": "UNKNOWN",
+      "outcome_class": "UNKNOWN",
+      "is_optimal": false,
+      "children": {
+        "2": "-1:001",
+        "1": "-1:010",
+        "0": "-1:100"
+      }
+    },
+    "1:10-1": {
+      "id": "1:10-1",
+      "board_state": [1, 0, -1],
+      "player_to_move": 1,
+      "game_value": "UNKNOWN",
+      "outcome_class": "UNKNOWN",
+      "is_optimal": false,
+      "children": {
+        "1": "-1:110"
+      }
+    }
+  }
+}
