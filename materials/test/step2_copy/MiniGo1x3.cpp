@@ -7,12 +7,12 @@ MiniGo1x3::MiniGo1x3(const std::vector<int>& b, int p)
     // previous_board は自動的に空のベクターで初期化される
 }
 
-// --- ▼▼▼ 変更点 3: 新しいコンストラクタの実装を追加 ▼▼▼ ---
-// 一手前の盤面も引き継ぐコンストラクタ
+
+// 一手前の盤面も引き継ぐコンストラクタ(コウを追加するためのもの)
 MiniGo1x3::MiniGo1x3(const std::vector<int>& b, int p, const std::vector<int>& prev_b)
     : board(b), player(p), previous_board(prev_b) {}
 
-// 指定マスの呼吸点を数える (変更なし)
+// 指定マスの呼吸点を数える
 int MiniGo1x3::count_liberties(int pos, int color, const std::vector<int>& b) const {
     int liberties = 0;
     if (pos > 0 && b[pos - 1] == 0) liberties++;
@@ -20,7 +20,7 @@ int MiniGo1x3::count_liberties(int pos, int color, const std::vector<int>& b) co
     return liberties;
 }
 
-// 捕獲判定（隣の相手石の呼吸点が0になるか） (変更なし)
+// 捕獲判定（隣の相手石の呼吸点が0になるか)
 bool MiniGo1x3::is_capture(int pos, int current_player) const {
     bool captured = false;
     int opponent = -current_player;
@@ -46,8 +46,8 @@ bool MiniGo1x3::would_be_suicide(int pos) const {
 }
 
 
-// --- ▼▼▼ 変更点 4: get_legal_moves にコウ判定を追加 ▼▼▼ ---
-// 合法手を返す
+
+// 合法手を返す(コウ判定を追加)
 std::vector<int> MiniGo1x3::get_legal_moves() const {
     std::vector<int> moves;
     for (int i = 0; i < 3; i++) {
@@ -61,8 +61,8 @@ std::vector<int> MiniGo1x3::get_legal_moves() const {
             continue;
         }
 
-        // 3. コウのルールを破らないか？
-        // まず、その手を打った後の盤面を仮に生成する
+        // ウのルールを破らないか？
+        //打った後の盤面を仮に生成する
         auto [next_game_state, captured] = make_move(i);
         
         // 生成された盤面が、一手前の盤面と同じ場合はコウなので違法手
@@ -76,7 +76,7 @@ std::vector<int> MiniGo1x3::get_legal_moves() const {
     return moves;
 }
 
-// --- ▼▼▼ 変更点 5: make_move で一手前の盤面を引き継ぐ ▼▼▼ ---
+
 // 着手と捕獲処理
 std::pair<MiniGo1x3, bool> MiniGo1x3::make_move(int move) const {
     std::vector<int> new_board = board;
