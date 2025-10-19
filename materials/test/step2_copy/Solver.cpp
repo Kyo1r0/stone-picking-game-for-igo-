@@ -81,5 +81,7 @@ void Solver::print_all_nodes() const {
         for (const auto& [child_id, move_str] : node->children)
             std::cout << move_str << "(" << child_id << ") ";
         std::cout << "\n";
+        // std::flushをするといいかも
+        //1*3で結論をなにか出すといい
     }
 }
