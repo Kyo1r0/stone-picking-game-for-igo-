@@ -13,6 +13,7 @@ struct GameNode {
     std::string game_value;             // ゲーム値 ("P","N","L","R" など)
     std::string outcome_class;          // 勝敗分類
     bool is_optimal;                    // 最善手フラグ
+    int winner = 0;                     // 勝利判定0=勝敗未定, 1=黒勝ち, -1=白勝ち
 
     GameNode(const std::vector<int>& board, int player)
         : board_state(board), player_to_move(player), game_value(""), outcome_class(""), is_optimal(false) {}
@@ -31,8 +32,11 @@ public:
     // デバッグ用：全ノード出力e
     void print_all_nodes() const;
 
+    // デバック用:最善手を出力する
+    void print_optinal_sort() const;
+
 private:
-    std::map<std::string, std::unique_ptr<GameNode>> nodes;
+    std::map<std::string, std::unique_ptr<GameNode>> nodes; //ゲーム木をマップで管理
 
     // 再帰探索関数
     GameNode* _find_value(const MiniGo1x3& game);
