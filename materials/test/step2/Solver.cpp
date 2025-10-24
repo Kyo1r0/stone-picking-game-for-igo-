@@ -25,17 +25,40 @@ GameNode* Solver::_find_value(const MiniGo1x3& game) {
     auto moves = game.get_legal_moves();
     if (moves.empty()) {
         // 終局
-        node_ptr->game_value = "L";  // 合法手なしで負け
-        node_ptr->outcome_class = "L";
+        node_ptr->game_value = "0";  // 合法手なしで負け
+        node_ptr->outcome_class = "P";
         node_ptr->is_optimal = false;
+        node_ptr->winner = -(game.player);
         return node_ptr;
     }
 
 
     
     std::vector<GameNode*> child_nodes;
+    bool immediate_win = false; // この手番で即勝利できるか
+
+
     for (int m : moves) {
         auto [next_game, captured] = game.make_move(m);
+       
+
+        /*  // 勝利条件チェック(m=1) 
+        if (captured) {
+            immediate_win = true; //判定するために設けた
+             node_ptr->children[std::to_string(m)] = "Win-> "; // 碁盤と勝ちの情報を書きたい  ここの調整が必要　つまりとった後の盤面とwin(1)を書く感じで
+             if (!node_ptr->is_optimal) { // まだ optimal な手が見つかっていない場合
+                node_ptr->is_optimal = true; // このノードから勝利できることを示す
+                node_ptr->winner = game.player;
+             }
+             break;// 勝敗判定を優先する.ここでループを抜ける(本当は全探索が必要) 
+        }
+        */
+
+
+        
+
+
+
         GameNode* child_node = _find_value(next_game);
 
         node_ptr->children[make_key(next_game.board, next_game.player)] = std::to_string(m);
@@ -52,15 +75,17 @@ GameNode* Solver::_find_value(const MiniGo1x3& game) {
             break;
         }
     }
-    node_ptr->game_value = found_win ? "P" : "N";
-    node_ptr->outcome_class = found_win ? "P" : "N";
-
+    
+    node_ptr->game_value = "UNKNOWN";
+    node_ptr->outcome_class = "UNKNOWN";
+    node_ptr->is_optimal = false; // 最善手かどうかも不明なためfalseに設定
+    
     return node_ptr;
 }
 
 
 void Solver::print_all_nodes() const {
-    for (const auto& [key, node] : nodes) {
+    for (const auto& [key, node] : nodes) { //nodesがsolver.hで定義済み
         std::cout << "Node key: " << key << "\n  Board: ";
         for (int v : node->board_state) std::cout << v << " ";
         std::cout << "\n  Player: " << (node->player_to_move==1?"Black":"White")
@@ -72,4 +97,9 @@ void Solver::print_all_nodes() const {
             std::cout << move_str << "(" << child_id << ") ";
         std::cout << "\n";
     }
+}
+
+
+void Solver::print_optinal_sort() const {
+
 }

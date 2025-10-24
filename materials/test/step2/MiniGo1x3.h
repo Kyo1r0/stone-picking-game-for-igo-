@@ -9,8 +9,8 @@ public:
 
     MiniGo1x3(const std::vector<int>& board, int player);
 
-    std::vector<int> get_legal_moves() const;
-    std::pair<MiniGo1x3,bool> make_move(int move) const;
+    std::vector<int> get_legal_moves() const;//合法手を全て返す
+    std::pair<MiniGo1x3,bool> make_move(int move) const;// 着手と捕獲処理(とったかどうかでTF)
 
 private:
     bool is_capture(int pos, int current_player) const;
