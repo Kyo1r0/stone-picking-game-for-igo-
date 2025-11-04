@@ -35,10 +35,10 @@ public:
     // デバック用:最善手を出力する
     void print_optinal_sort() const;
 
+    //勝者を判定する(Max,min法)
     int get_initial_winner() const;
 
-    std::string get_initial_outcome() const;
-
+    
     
 private:
     std::map<std::string, std::unique_ptr<GameNode>> nodes; //ゲーム木をマップで管理
