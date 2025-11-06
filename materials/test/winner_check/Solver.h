@@ -32,6 +32,9 @@ public:
     // デバッグ用：全ノード出力e
     void print_all_nodes() const;
 
+    // デバッグ用:Minimaxの要約出力
+    void print_minimax_summary() const;
+
     // デバック用:最善手を出力する
     void print_optinal_sort() const;
 
