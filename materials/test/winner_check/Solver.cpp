@@ -119,6 +119,13 @@ void Solver::print_all_nodes() const {
 }
 
 
-//int Solver::get_initial_winner() const{}
+int Solver::get_initial_winner() const {
+    std::string root_key = make_key({0,0,0}, 1); // 初期設定に合わせて変更
+    if (nodes.count(root_key)) {
+        return nodes.at(root_key)->winner;
+    }
+    return 0; // 未探索時
+}
+
 
 //void Solver::print_optinal_sort() const {}
