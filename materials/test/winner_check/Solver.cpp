@@ -134,5 +134,30 @@ int Solver::get_initial_winner() const {
     return 0; // 未探索時
 }
 
+void Solver::print_minimax_summary() const {
+    std::cout << "---  Minimax Summary ---" << "\n";
+    std::cout << "(Key: [Player] -> Winner: W, Optimal: O, Children: [...])\n\n";
 
+    for (const auto& [key, node] : nodes) {
+        // キーと手番
+        std::cout << key << ": "
+                  << "[" << (node->player_to_move == 1 ? "Black" : "White") << "] -> ";
+        
+        // Minimaxの結果 (Winner と Optimal)
+        std::cout << "W: " << node->winner
+                  << ", O: " << (node->is_optimal ? "Yes" : "No") << "\n";
+
+        // 子ノード (どの手に遷移するか)
+        std::cout << "    Children: ";
+        if (node->children.empty()) {
+            std::cout << "(Terminal)";
+        } else {
+            for (const auto& [child_id, move_str] : node->children) {
+                // 子ノードのキーだけ表示
+                std::cout << child_id << " "; 
+            }
+        }
+        std::cout << "\n----------------\n";
+    }
+}
 //void Solver::print_optinal_sort() const {}
