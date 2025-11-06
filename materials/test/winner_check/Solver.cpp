@@ -24,76 +24,83 @@ GameNode* Solver::_find_value(const MiniGo1x3& game) {
 
     auto moves = game.get_legal_moves();
     if (moves.empty()) {
-        // 終局
-        node_ptr->game_value = "0";  // 合法手なしで負け
-        node_ptr->outcome_class = "P";
+        // 終局 (合法手なしで負け)
+        // このノードの勝者は「相手」
+        node_ptr->game_value = "UNKNOWN";
+        node_ptr->outcome_class = "Loss"; // (CGTなら "P" - Previous player wins)
         node_ptr->is_optimal = false;
-        node_ptr->winner = -(game.player);
+        node_ptr->winner = -(game.player); // 相手の勝ち
         return node_ptr;
     }
 
-
-    
     std::vector<GameNode*> child_nodes;
-    bool immediate_win = false; // この手番で即勝利できるか
-
+    // bool immediate_win = false; // ループ後の判定で統一するため不要
 
     for (int m : moves) {
         auto [next_game, captured] = game.make_move(m);
-       
+        std::string child_key = make_key(next_game.board, next_game.player);
+        node_ptr->children[child_key] = std::to_string(m); // 子ノードへの参照を記録
+                                                                                                                                                                                                                     
+        GameNode* child_node = nullptr;
 
-        if (captured) { //再帰の終端条件
-            immediate_win = true; // 判定するために設けた
+        if (captured) {
+            // 捕獲＝この手で即勝利。
+            // 子ノード（相手の手番）は「負け」の終局ノードとなる。
             
-            // 1. このノード(自分)は "P" (勝ち) と確定
-            node_ptr->is_optimal = true;
-            node_ptr->winner = game.player;
-            node_ptr->outcome_class = "P";
-            node_ptr->game_value = "Win (Capture)";
-            
-            // 2. 子ノード(相手)を「手動で」設定する (再帰しない)
-            std::string child_key = make_key(next_game.board, next_game.player);
-            node_ptr->children[child_key] = std::to_string(m); //
-
-            // 3. 子ノードがまだ map になければ、"L" (負け) として作成・登録
+            // 子ノードがまだ map になければ、"Loss" (負け) として作成・登録
             if (!nodes.count(child_key)) {
                 auto child_node_obj = std::make_unique<GameNode>(next_game.board, next_game.player);
-                child_node_obj->outcome_class = "L"; // 相手は負け (L-position)
-                child_node_obj->winner = game.player;  // 勝者は自分
-                child_node_obj->game_value = "Lost (Terminal)";
-                child_node_obj->is_optimal = true; // 終局扱い
+                child_node_obj->outcome_class = "UNKNOWN"; // 相手は負け
+                child_node_obj->winner = game.player;  // 勝者は自分 (game.player)
+                child_node_obj->game_value = "Lost (Captured)";
+                child_node_obj->is_optimal = false; // 終局扱い
                 nodes[child_key] = std::move(child_node_obj);
             }
-            // (child_nodes.push_back(nodes[child_key].get()); は break するため不要)
-
-            // 4. 他の手の探索を打ち切る
-            //break;
+            child_node = nodes[child_key].get();
+            // この場合、子ノードは終局なので _find_value(next_game) は呼ばない
+        } else {
+            // 捕獲ではない場合、通常通り再帰的に探索
+            child_node = _find_value(next_game);
         }
-
         
-
-
-
-        GameNode* child_node = _find_value(next_game);
-
-        node_ptr->children[make_key(next_game.board, next_game.player)] = std::to_string(m);
+        // このループで調べた子ノードをリストに追加
         child_nodes.push_back(child_node);
     }
 
-    // 勝敗・最善手判定（1×3用の簡単ルール）
-    // 捕獲が起こる手があれば、自分勝利（"P"）
-    bool found_win = false;
+
+
+
+    // 勝敗判定 (Minimax法) すべての子ノードの結果を見て現在のノードの勝敗を決定する
+    // winnerをみることで探索している
+
+
+    bool found_win = false; // 自分が勝てる手（＝相手が負ける手）を見つけたか
+    
     for (GameNode* child : child_nodes) {
-        if (child->outcome_class == "L") { // 相手が負ける手がある → 自分勝ち
+        // 子ノード (相手の手番) の勝者 (child->winner) が、
+        // 自分 (game.player) であれば、それは相手の負けを意味する。
+        if (child->winner == game.player) { 
             found_win = true;
-            node_ptr->is_optimal = true; // 最善手
-            break;
+            // 全探索するため break しない
         }
     }
-    
+
+    if (found_win) {
+        // 一つでも勝てる手があれば、このノード（自分）は「勝ち」
+        node_ptr->winner = game.player;
+        node_ptr->outcome_class = "Win"; // (CGTなら "N" - Next player wins)
+        node_ptr->game_value = "UNKNOWN";
+    } else {
+        // 全ての手が（相手から見て）勝ちにつながる
+        // ＝ どの手を選んでも自分は「負け」
+        node_ptr->winner = -game.player;
+
+    }
+
+    //  細かいところは"UNKNOWN"にする 
     node_ptr->game_value = "UNKNOWN";
     node_ptr->outcome_class = "UNKNOWN";
-    node_ptr->is_optimal = false; // 最善手かどうかも不明なためfalseに設定
+     node_ptr->is_optimal = false;
     
     return node_ptr;
 }
