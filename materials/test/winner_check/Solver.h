@@ -46,9 +46,23 @@ public:
 private:
     std::map<std::string, std::unique_ptr<GameNode>> nodes; //ゲーム木をマップで管理
 
-    // 再帰探索関数
-    GameNode* _find_value(const MiniGo1x3& game);
 
     // 盤面と手番からノードキーを生成
     std::string make_key(const std::vector<int>& board, int player) const;
+
+
+    // (メイン) 再帰探索の「振り分け」を行う
+    GameNode* _find_value(const MiniGo1x3& game);
+
+    // (ヘルパー1) 新しいノードを作成し、マップに登録する
+    GameNode* _create_new_node(const std::string& key, const MiniGo1x3& game);
+
+    // (ヘルパー2) ノードを終局として設定する
+    void _setup_terminal_node(GameNode* node, int winner, const std::string& reason);
+
+    // (ヘルパー3) 子ノードを探索し、結果を評価する
+    void _explore_children_and_evaluate(GameNode* node_ptr, const MiniGo1x3& game, const std::vector<int>& moves);
+
+    // (ヘルパー4) 子ノードリストから親の勝敗を決定する (前回作成)
+    void search_winner_Minimax(GameNode* node_ptr, const std::vector<GameNode*>& child_nodes, int current_player);
 };

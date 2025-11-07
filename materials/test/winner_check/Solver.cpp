@@ -14,94 +14,101 @@ std::string Solver::make_key(const std::vector<int>& board, int player) const {
     return oss.str();
 }
 
-GameNode* Solver::_find_value(const MiniGo1x3& game) {
-    std::string key = make_key(game.board, game.player);
-    if (nodes.count(key)) return nodes[key].get();
 
+// (ヘルパー1) ノードの作成
+GameNode* Solver::_create_new_node(const std::string& key, const MiniGo1x3& game) {
     auto node = std::make_unique<GameNode>(game.board, game.player);
     GameNode* node_ptr = node.get();
     nodes[key] = std::move(node);
+    return node_ptr;
+}
 
-    auto moves = game.get_legal_moves();
-    if (moves.empty()) {
-        // 終局 (合法手なしで負け)
-        // このノードの勝者は「相手」
-        node_ptr->game_value = "UNKNOWN";
-        node_ptr->outcome_class = "Loss"; // (CGTなら "P" - Previous player wins)
-        node_ptr->is_optimal = false;
-        node_ptr->winner = -(game.player); // 相手の勝ち
-        return node_ptr;
-    }
+// (ヘルパー2) 終局ノードの設定 (共通化)
+void Solver::_setup_terminal_node(GameNode* node, int winner, const std::string& reason) {
+    node->winner = winner;
+    node->game_value = reason;
+    node->outcome_class = "UNKNOWN"; 
+    node->is_optimal = false;       // 終局なので
+}
 
+// (ヘルパー3) 探索と評価
+void Solver::_explore_children_and_evaluate(GameNode* node_ptr, const MiniGo1x3& game, const std::vector<int>& moves) {
+    
     std::vector<GameNode*> child_nodes;
-    // bool immediate_win = false; // ループ後の判定で統一するため不要
 
     for (int m : moves) {
         auto [next_game, captured] = game.make_move(m);
         std::string child_key = make_key(next_game.board, next_game.player);
-        node_ptr->children[child_key] = std::to_string(m); // 子ノードへの参照を記録
-                                                                                                                                                                                                                     
+        node_ptr->children[child_key] = std::to_string(m); 
+
         GameNode* child_node = nullptr;
 
         if (captured) {
-            // 捕獲＝この手で即勝利。
-            // 子ノード（相手の手番）は「負け」の終局ノードとなる。
-            
-            // 子ノードがまだ map になければ、"Loss" (負け) として作成・登録
+            // 捕獲＝子ノードは終局
             if (!nodes.count(child_key)) {
-                auto child_node_obj = std::make_unique<GameNode>(next_game.board, next_game.player);
-                child_node_obj->outcome_class = "UNKNOWN"; // 相手は負け
-                child_node_obj->winner = game.player;  // 勝者は自分 (game.player)
-                child_node_obj->game_value = "Lost (Captured)";
-                child_node_obj->is_optimal = false; // 終局扱い
-                nodes[child_key] = std::move(child_node_obj);
+                // 子ノードを作成し、終局として設定
+                child_node = _create_new_node(child_key, next_game);
+                _setup_terminal_node(child_node, game.player, "Lost (Captured)");
+            } else {
+                child_node = nodes[child_key].get();
             }
-            child_node = nodes[child_key].get();
-            // この場合、子ノードは終局なので _find_value(next_game) は呼ばない
         } else {
-            // 捕獲ではない場合、通常通り再帰的に探索
+            // 捕獲でない＝再帰
             child_node = _find_value(next_game);
         }
-        
-        // このループで調べた子ノードをリストに追加
         child_nodes.push_back(child_node);
     }
 
+    // (ヘルパー4) 評価
+    search_winner_Minimax(node_ptr, child_nodes, game.player);
+}
 
-
-
-    // 勝敗判定 (Minimax法) すべての子ノードの結果を見て現在のノードの勝敗を決定する
-    // winnerをみることで探索している
-
-
-    bool found_win = false; // 自分が勝てる手（＝相手が負ける手）を見つけたか
-    
+// (ヘルパー4)勝敗判定 (Minimax法) すべての子ノードの結果を見て現在のノードの勝敗を決定する
+void Solver::search_winner_Minimax(GameNode* node_ptr, const std::vector<GameNode*>& child_nodes, int current_player){ 
+    bool found_win = false;
     for (GameNode* child : child_nodes) {
-        // 子ノード (相手の手番) の勝者 (child->winner) が、
-        // 自分 (game.player) であれば、それは相手の負けを意味する。
-        if (child->winner == game.player) { 
+        if (child->winner == current_player) { 
             found_win = true;
-            // 全探索するため break しない
         }
     }
 
     if (found_win) {
-        // 一つでも勝てる手があれば、このノード（自分）は「勝ち」
-        node_ptr->winner = game.player;
-        node_ptr->outcome_class = "Win"; // (CGTなら "N" - Next player wins)
+        node_ptr->winner = current_player;
+        node_ptr->outcome_class = "Win"; 
         node_ptr->game_value = "UNKNOWN";
     } else {
-        // 全ての手が（相手から見て）勝ちにつながる
-        // ＝ どの手を選んでも自分は「負け」
-        node_ptr->winner = -game.player;
-
+        node_ptr->winner = -current_player;
     }
 
-    //  細かいところは"UNKNOWN"にする 
+    // 細かいところは"UNKNOWN"にする 
     node_ptr->game_value = "UNKNOWN";
     node_ptr->outcome_class = "UNKNOWN";
-     node_ptr->is_optimal = false;
+    node_ptr->is_optimal = false;
+}
+
+
+//メインで指揮をとっているだけ
+GameNode* Solver::_find_value(const MiniGo1x3& game) {
+    // 1. メモ化チェック (これは _find_value の責務)
+    std::string key = make_key(game.board, game.player);
+    if (nodes.count(key)) {
+        return nodes[key].get();
+    }
+
+    // 2. ノードの作成
+    GameNode* node_ptr = _create_new_node(key, game);
+
+    // 3. 終局かどうかの判定と「振り分け」
+    auto moves = game.get_legal_moves();
+    if (moves.empty()) {
+        // 終局処理をヘルパー2に任せる
+        _setup_terminal_node(node_ptr, -(game.player), "Loss (No Moves)");
+    } else {
+        // 探索処理をヘルパー3に任せる
+        _explore_children_and_evaluate(node_ptr, game, moves);
+    }
     
+    // 4. 設定済みのノードを返す
     return node_ptr;
 }
 
@@ -139,21 +146,18 @@ void Solver::print_minimax_summary() const {
     std::cout << "(Key: [Player] -> Winner: W, Optimal: O, Children: [...])\n\n";
 
     for (const auto& [key, node] : nodes) {
-        // キーと手番
         std::cout << key << ": "
                   << "[" << (node->player_to_move == 1 ? "Black" : "White") << "] -> ";
-        
-        // Minimaxの結果 (Winner と Optimal)
+
         std::cout << "W: " << node->winner
                   << ", O: " << (node->is_optimal ? "Yes" : "No") << "\n";
 
-        // 子ノード (どの手に遷移するか)
         std::cout << "    Children: ";
         if (node->children.empty()) {
             std::cout << "(Terminal)";
         } else {
             for (const auto& [child_id, move_str] : node->children) {
-                // 子ノードのキーだけ表示
+                
                 std::cout << child_id << " "; 
             }
         }
