@@ -3,7 +3,7 @@
 #include <sstream>
 
 void Solver::solve(const std::vector<int>& initial_board, int initial_player) {
-    MiniGo1x3 game(initial_board, initial_player);
+    MiniGo1xN game(initial_board, initial_player);
     _find_value(game);
 }
 
@@ -16,7 +16,7 @@ std::string Solver::make_key(const std::vector<int>& board, int player) const {
 
 
 // (ヘルパー1) ノードの作成
-GameNode* Solver::_create_new_node(const std::string& key, const MiniGo1x3& game) {
+GameNode* Solver::_create_new_node(const std::string& key, const MiniGo1xN& game) {
     auto node = std::make_unique<GameNode>(game.board, game.player);
     GameNode* node_ptr = node.get();
     nodes[key] = std::move(node);
@@ -32,7 +32,7 @@ void Solver::_setup_terminal_node(GameNode* node, int winner, const std::string&
 }
 
 // (ヘルパー3) 探索と評価
-void Solver::_explore_children_and_evaluate(GameNode* node_ptr, const MiniGo1x3& game, const std::vector<int>& moves) {
+void Solver::_explore_children_and_evaluate(GameNode* node_ptr, const MiniGo1xN& game, const std::vector<int>& moves){
     
     std::vector<GameNode*> child_nodes;
 
@@ -88,7 +88,7 @@ void Solver::search_winner_Minimax(GameNode* node_ptr, const std::vector<GameNod
 
 
 //メインで指揮をとっているだけ
-GameNode* Solver::_find_value(const MiniGo1x3& game) {
+GameNode* Solver::_find_value(const MiniGo1xN& game) {
     // 1. メモ化チェック (これは _find_value の責務)
     std::string key = make_key(game.board, game.player);
     if (nodes.count(key)) {
@@ -133,13 +133,15 @@ void Solver::print_all_nodes() const {
 }
 
 
-int Solver::get_initial_winner() const {
-    std::string root_key = make_key({0,0,0}, 1); // 初期設定に合わせて変更
+// 引数に合わせて修正。固定の {0,0,0} ではなく、引数からキーを作る
+int Solver::get_initial_winner(const std::vector<int>& board, int player) const {
+    std::string root_key = make_key(board, player); 
     if (nodes.count(root_key)) {
         return nodes.at(root_key)->winner;
     }
-    return 0; // 未探索時
+    return 0; 
 }
+
 
 void Solver::print_minimax_summary() const {
     std::cout << "---  Minimax Summary ---" << "\n";
@@ -165,3 +167,4 @@ void Solver::print_minimax_summary() const {
     }
 }
 //void Solver::print_optinal_sort() const {}
+
