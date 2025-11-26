@@ -2,7 +2,6 @@
 #include <vector>
 #include <utility>
 
-// クラス名を MiniGo1xN に変更（推奨）
 class MiniGo1xN {
 public:
     std::vector<int> board; 
@@ -16,5 +15,10 @@ public:
 private:
     bool is_capture(int pos, int current_player) const;
     bool would_be_suicide(int pos) const;
+    
+    // 修正: グループ（連）を考慮して呼吸点を数える
     int count_liberties(int pos, int color, const std::vector<int>& b) const;
+    
+    // 追加: 指定した位置にある石のグループ全体を削除する
+    void remove_group(int pos, std::vector<int>& b) const;
 };
