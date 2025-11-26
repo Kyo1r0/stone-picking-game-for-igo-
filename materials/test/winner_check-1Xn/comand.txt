@@ -1,0 +1,2 @@
+テスト
+g++ -std=c++17 MiniGo1xN.cpp Solver.cpp main_Minimax_debug.cpp -o debug-minimax
