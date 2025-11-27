@@ -62,6 +62,10 @@ private:
     HashKey zobrist_player[2];                       // 0:黒番, 1:白番
 
 
+    //対称な場面を一つにすつ
+    std::vector<int> canonicalize_board(const std::vector<int>& board) const;
+
+
     // 盤面と手番からノードキーを生成
     std::string make_key(const std::vector<int>& board, int player) const;
 

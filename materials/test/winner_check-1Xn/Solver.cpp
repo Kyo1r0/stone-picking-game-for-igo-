@@ -35,8 +35,22 @@ static int piece_index(int v) {
     return 2;               // 白(-1)
 }
 
+std::vector<int> Solver::canonicalize_board(const std::vector<int>& board) const {
+    std::vector<int> rev(board.rbegin(), board.rend());
+    // 辞書順比較（vector<int> の < 演算子は辞書順）
+    if (rev < board) {
+        return rev;  // 反転した方が小さい → これを採用
+    }
+    return board;     // そのままの方が小さい
+}
+
+
+
 // ★ハッシュ計算
-HashKey Solver::compute_hash(const std::vector<int>& board, int player) const {
+HashKey Solver::compute_hash(const std::vector<int>& original, int player) const {
+    // ★ canonical 化
+    std::vector<int> board = canonicalize_board(original);
+
     HashKey h = 0;
     int n = static_cast<int>(board.size());
     for (int i = 0; i < n; ++i) {
@@ -49,12 +63,24 @@ HashKey Solver::compute_hash(const std::vector<int>& board, int player) const {
 }
 
 
-std::string Solver::make_key(const std::vector<int>& board, int player) const {
-    std::ostringstream oss;
-    oss << player << ":";
-    for (int v : board) oss << v;
-    return oss.str();
+
+std::string Solver::make_key(const std::vector<int>& original, int player) const {
+    auto board = canonicalize_board(original);
+    std::string s;
+    s.reserve(board.size() + 3);
+    s += (player == 1 ? '1' : '2');  // 手番を表す
+    s += ':';
+    for (int x : board) {
+        if (x == 1) s += '1';
+        else if (x == -1) s += '-';
+        else s += '0';
+    }
+    return s;
 }
+
+
+
+
 
 
 // (ヘルパー1) ノードの作成
