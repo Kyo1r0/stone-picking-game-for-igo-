@@ -1,19 +1,20 @@
-Enter max board size N (e.g., 5): 17
+Enter max board size N (e.g., 5): 18
 
-Analysis from 1x3 to 1x17:
+Analysis from 1x3 to 1x18:
 ----------------------------------------
-Size 1x3 : Black (First Player) Wins (Nodes: 6)
-Size 1x4 : Black (First Player) Wins (Nodes: 12)
-Size 1x5 : Black (First Player) Wins (Nodes: 35)
-Size 1x6 : Black (First Player) Wins (Nodes: 87)
-Size 1x7 : Black (First Player) Wins (Nodes: 231)
-Size 1x8 : Black (First Player) Wins (Nodes: 619)
-Size 1x9 : Black (First Player) Wins (Nodes: 1676)
-Size 1x10 : Black (First Player) Wins (Nodes: 4507)
-Size 1x11 : Black (First Player) Wins (Nodes: 12289)
-Size 1x12 : Black (First Player) Wins (Nodes: 33475)
-Size 1x13 : Black (First Player) Wins (Nodes: 91413)
-Size 1x14 : Black (First Player) Wins (Nodes: 249774)
-Size 1x15 : Black (First Player) Wins (Nodes: 684145)
-Size 1x16 : Black (First Player) Wins (Nodes: 1874358)
-Size 1x17 : Black (First Player) Wins (Nodes: 5141141)
+Size 1x3 : Black (First Player) Wins (Nodes: 6, Time: 0.001633 s)
+Size 1x4 : Black (First Player) Wins (Nodes: 12, Time: 0.000136 s)
+Size 1x5 : Black (First Player) Wins (Nodes: 35, Time: 0.000309 s)
+Size 1x6 : Black (First Player) Wins (Nodes: 87, Time: 0.000729 s)
+Size 1x7 : Black (First Player) Wins (Nodes: 231, Time: 0.002214 s)
+Size 1x8 : Black (First Player) Wins (Nodes: 619, Time: 0.006749 s)
+Size 1x9 : Black (First Player) Wins (Nodes: 1676, Time: 0.014008 s)
+Size 1x10 : Black (First Player) Wins (Nodes: 4507, Time: 0.033809 s)
+Size 1x11 : Black (First Player) Wins (Nodes: 12289, Time: 0.089001 s)
+Size 1x12 : Black (First Player) Wins (Nodes: 33475, Time: 0.262092 s)
+Size 1x13 : Black (First Player) Wins (Nodes: 91413, Time: 0.777928 s)
+Size 1x14 : Black (First Player) Wins (Nodes: 249774, Time: 2.43623 s)
+Size 1x15 : Black (First Player) Wins (Nodes: 684145, Time: 7.08512 s)
+Size 1x16 : Black (First Player) Wins (Nodes: 1874358, Time: 21.3145 s)
+Size 1x17 : Black (First Player) Wins (Nodes: 5141141, Time: 65.5029 s)
+Size 1x18 : Black (First Player) Wins (Nodes: 14109931, Time: 228.502 s)
