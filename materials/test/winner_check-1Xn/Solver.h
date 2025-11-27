@@ -4,6 +4,11 @@
 #include <map>
 #include <memory>
 #include <vector>
+#include <unordered_map>   // 追加(Zobrist)
+#include <cstdint>         // 追加(Zobrist)
+#include <random>          // 追加(Zobrist)
+
+using HashKey = std::uint64_t;  // 追加(Zobrist)
 
 struct GameNode {
     std::string id;                     // ノードID
@@ -48,18 +53,30 @@ public:
     
     
 private:
-    std::map<std::string, std::unique_ptr<GameNode>> nodes; //ゲーム木をマップで管理
+     // ★変更: string キー → Zobrist ハッシュキー
+    std::unordered_map<HashKey, std::unique_ptr<GameNode>> nodes;
+
+
+    // ★Zobrist 用テーブル
+    std::vector<std::vector<HashKey>> zobrist_table; // [pos][pieceIndex]
+    HashKey zobrist_player[2];                       // 0:黒番, 1:白番
 
 
     // 盤面と手番からノードキーを生成
     std::string make_key(const std::vector<int>& board, int player) const;
 
 
+    // ★追加: Zobrist 初期化 & ハッシュ計算
+    void init_zobrist(int board_size);
+    HashKey compute_hash(const std::vector<int>& board, int player) const;
+
+
+
     // (メイン) 再帰探索の「振り分け」を行う
     GameNode* _find_value(const MiniGo1xN& game);
 
     // (ヘルパー1) 新しいノードを作成し、マップに登録する
-    GameNode* _create_new_node(const std::string& key, const MiniGo1xN& game);
+    GameNode* _create_new_node(HashKey key, const MiniGo1xN& game);
 
     // (ヘルパー2) ノードを終局として設定する
     void _setup_terminal_node(GameNode* node, int winner, const std::string& reason);
