@@ -50,7 +50,7 @@ public:
     //勝者を判定する(Max,min法)
     int get_initial_winner() const;
 
-    
+    void export_heatmap_csv(const std::vector<int>& board, int player, const std::string& filename) const;
     
 private:
      // ★変更: string キー → Zobrist ハッシュキー
@@ -90,4 +90,6 @@ private:
 
     // (ヘルパー4) 子ノードリストから親の勝敗を決定する (前回作成)
     void search_winner_Minimax(GameNode* node_ptr, const std::vector<GameNode*>& child_nodes, int current_player);
+
+   
 };

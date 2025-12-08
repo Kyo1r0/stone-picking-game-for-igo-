@@ -1,6 +1,8 @@
 #include "Solver.h"
 #include <iostream>
 #include <sstream>
+#include <fstream>
+#include <algorithm>
 
 void Solver::solve(const std::vector<int>& initial_board, int initial_player) {
     //テーブルを初期化
@@ -243,3 +245,56 @@ void Solver::print_minimax_summary() const {
 }
 //void Solver::print_optinal_sort() const {}
 
+
+void Solver::export_heatmap_csv(const std::vector<int>& board, int player, 
+                                const std::string& filename)const {
+    MiniGo1xN game(board, player);
+    auto moves = game.get_legal_moves();
+
+    std::ofstream ofs(filename);
+    ofs << "move,color,result_list\n";
+
+    for (int mv : moves) {
+        auto [next_game, captured] = game.make_move(mv);
+        HashKey child_hash = compute_hash(next_game.board, next_game.player);
+
+        std::vector<int> results;
+
+        // 子ノード探索
+        for (auto& [key, node_ptr] : nodes) {
+            if (key == child_hash) {
+                // 子ノードを探索
+                for (auto& child : node_ptr->children) {
+                    HashKey ck = std::stoull(child.first);
+                    auto it = nodes.find(ck);
+                    if (it != nodes.end()) {
+                        results.push_back(it->second->winner);
+                    }
+                }
+                break;
+            }
+        }
+
+        // 分類
+        std::string color;
+        if (!results.empty()) {
+            bool all_win  = std::all_of(results.begin(), results.end(),
+                                        [&](int w){ return w == player; });
+            bool all_lose = std::all_of(results.begin(), results.end(),
+                                        [&](int w){ return w == -player; });
+
+            if (all_win)      color = "green";
+            else if (all_lose) color = "red";
+            else               color = "yellow";
+        } else {
+            color = "unknown";
+        }
+
+        ofs << mv << "," << color << ",[";
+        for (size_t i = 0; i < results.size(); ++i) {
+            ofs << results[i];
+            if (i + 1 < results.size()) ofs << " ";
+        }
+        ofs << "]\n";
+    }
+}
