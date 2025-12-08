@@ -1,2 +1,10 @@
-テスト
+テスト(デバック)
 g++ -std=c++17 MiniGo1xN.cpp Solver.cpp main_Minimax_debug.cpp -o debug-minimax
+
+テスト(CSV)
+g++ -std=c++17 MiniGo1xN.cpp Solver.cpp main_Minimax_debug-to_csv.cpp -o debug-minimax
+
+
+実行
+
+g++ -std=c++17 MiniGo1xN.cpp Solver.cpp   main_solver_1-to-n.cpp  -o Solver

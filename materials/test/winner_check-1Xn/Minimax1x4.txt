@@ -1,0 +1,47 @@
+========================================
+ Board Size: 1x4
+ Initial Winner: 1 (Black Wins)
+========================================
+
+--- Minimax Summary ---
+---  Minimax Summary ---
+(Key: [Player] -> Winner: W, Optimal: O, Children: [...])
+
+7528163705609393416: [White] -> W: 1, O: No
+    Children: (Terminal)
+----------------
+13357548788920831355: [White] -> W: 1, O: No
+    Children: 1:-010 1:0-10 
+----------------
+14336068508618375519: [Black] -> W: -1, O: No
+    Children: (Terminal)
+----------------
+13904159318051287087: [Black] -> W: -1, O: No
+    Children: (Terminal)
+----------------
+9180961978414070291: [Black] -> W: 1, O: No
+    Children: 2:-011 2:0110 
+----------------
+8324238135967024211: [Black] -> W: 1, O: No
+    Children: 2:0101 
+----------------
+15783344561556250996: [White] -> W: 1, O: No
+    Children: (Terminal)
+----------------
+14619074256598264445: [Black] -> W: -1, O: No
+    Children: (Terminal)
+----------------
+13788059134512200715: [White] -> W: -1, O: No
+    Children: 1:--00 
+----------------
+733900485679003911: [White] -> W: -1, O: No
+    Children: 1:-001 1:0-00 1:0-01 
+----------------
+14706936719556316783: [Black] -> W: 1, O: No
+    Children: 2:-011 2:0101 
+----------------
+14564364563462176543: [Black] -> W: 1, O: No
+    Children: 2:0001 2:0010 
+----------------
+
+Total nodes explored: 12
