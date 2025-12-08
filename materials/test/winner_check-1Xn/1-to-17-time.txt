@@ -1,0 +1,19 @@
+Enter max board size N (e.g., 5): 18
+
+Analysis from 1x3 to 1x18:
+----------------------------------------
+Size 1x3 : Black (First Player) Wins (Nodes: 9, Time: 0.026104 s)
+Size 1x4 : Black (First Player) Wins (Nodes: 22, Time: 0.000162 s)
+Size 1x5 : Black (First Player) Wins (Nodes: 65, Time: 0.000436 s)
+Size 1x6 : Black (First Player) Wins (Nodes: 168, Time: 0.001214 s)
+Size 1x7 : Black (First Player) Wins (Nodes: 446, Time: 0.002374 s)
+Size 1x8 : Black (First Player) Wins (Nodes: 1227, Time: 0.00726 s)
+Size 1x9 : Black (First Player) Wins (Nodes: 3313, Time: 0.023661 s)
+Size 1x10 : Black (First Player) Wins (Nodes: 8978, Time: 0.074085 s)
+Size 1x11 : Black (First Player) Wins (Nodes: 24480, Time: 0.222423 s)
+Size 1x12 : Black (First Player) Wins (Nodes: 66850, Time: 0.695986 s)
+Size 1x13 : Black (First Player) Wins (Nodes: 182555, Time: 2.06325 s)
+Size 1x14 : Black (First Player) Wins (Nodes: 499304, Time: 6.11876 s)
+Size 1x15 : Black (First Player) Wins (Nodes: 1367593, Time: 17.8007 s)
+Size 1x16 : Black (First Player) Wins (Nodes: 3748064, Time: 54.2708 s)
+Size 1x17 : Black (First Player) Wins (Nodes: 10280397, Time: 165.279 s)
