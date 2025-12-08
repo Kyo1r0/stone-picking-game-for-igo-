@@ -10,7 +10,7 @@ void Solver::solve(const std::vector<int>& initial_board, int initial_player) {
 }
 
 
-// ★Zobrist 初期化
+// Zobrist 初期化
 void Solver::init_zobrist(int board_size) {
     zobrist_table.assign(board_size, std::vector<HashKey>(3)); // 0:空,1:黒,2:白
 
@@ -46,13 +46,13 @@ std::vector<int> Solver::canonicalize_board(const std::vector<int>& board) const
 
 
 
-// ★ハッシュ計算
+// ハッシュ計算
 HashKey Solver::compute_hash(const std::vector<int>& original, int player) const {
-    // ★ canonical 化
+
     std::vector<int> board = canonicalize_board(original);
 
     HashKey h = 0;
-    int n = static_cast<int>(board.size());
+    int n = static_cast<int>(board.size()); //盤面のサイズを安全に取得
     for (int i = 0; i < n; ++i) {
         int idx = piece_index(board[i]);
         h ^= zobrist_table[i][idx];
