@@ -14,7 +14,7 @@ struct GameNode {
     std::string id;                     // ノードID
     std::vector<int> board_state;       // 盤面
     int player_to_move;                 // 手番
-    std::map<std::string, std::string> children; // child_id -> move_str
+    std::map<HashKey, int> children;   // child_id -> move_str
     std::string game_value;             // ゲーム値 ("P","N","L","R" など)
     std::string outcome_class;          // 勝敗分類
     bool is_optimal;                    // 最善手フラグ
@@ -51,6 +51,8 @@ public:
     int get_initial_winner() const;
 
     void export_heatmap_csv(const std::vector<int>& board, int player, const std::string& filename) const;
+    
+    void export_all_nodes_csv(const std::string& filename) const;
     
 private:
      // ★変更: string キー → Zobrist ハッシュキー

@@ -5,28 +5,25 @@
 
 int main() {
     int n;
-    std::cout << "Enter board size N (e.g., 3, 4, 5...): ";
+    std::cout << "Enter board size N: ";
     if (!(std::cin >> n)) return 0;
 
-    // 初期盤面（全部空）
-    std::vector<int> board(n, 0);
-    int first_player = 1;  // 黒番
-
     Solver solver;
+    std::vector<int> initial_board(n, 0); // 初期盤面 0:空
+    int first_player = 1; // 黒番
 
-    std::cout << "\nRunning full solver for 1x" << n << " ...\n";
-    solver.solve(board, first_player);
+    std::cout << "Solving 1x" << n << " ...\n";
+    
+    // 1. 全探索を実行（これでnodesにデータが溜まる）
+    solver.solve(initial_board, first_player);
 
-    // 勝者
-    int winner = solver.get_initial_winner(board, first_player);
-    std::cout << "Winner = " << (winner == 1 ? "Black" : "White") << "\n";
+    // 勝者の表示
+    int winner = solver.get_initial_winner(initial_board, first_player);
+    std::cout << "Initial Winner: " << (winner == 1 ? "Black" : "White") << "\n";
 
-    // --- CSV 出力 ---
-    std::string csvname = "heatmap_1x" + std::to_string(n) + ".csv";
-    std::cout << "Exporting heatmap to: " << csvname << "\n";
+    // 2. 結果をCSVに出力 (ナビゲーターアプリ用)
+    std::string csv_filename = "game_map_1x" + std::to_string(n) + ".csv";
+    solver.export_all_nodes_csv(csv_filename);
 
-    solver.export_heatmap_csv(board, first_player, csvname);
-
-    std::cout << "Done!\n";
     return 0;
 }
