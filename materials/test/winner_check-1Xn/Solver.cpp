@@ -107,6 +107,7 @@ void Solver::_setup_terminal_node(GameNode* node, int winner, const std::string&
     node->is_optimal = false;       // 終局なので
 }
 
+
 // (ヘルパー3) 探索と評価
 void Solver::_explore_children_and_evaluate(GameNode* node_ptr,
                                             const MiniGo1xN& game,
@@ -117,8 +118,9 @@ void Solver::_explore_children_and_evaluate(GameNode* node_ptr,
         auto [next_game, captured] = game.make_move(m);
 
         // 表示用ID
-        std::string child_id_str = make_key(next_game.board, next_game.player);
-        node_ptr->children[child_id_str] = std::to_string(m);
+        HashKey child_hash = compute_hash(next_game.board, next_game.player);
+        node_ptr->children[child_hash] = m;  // move string ではなく int でOK
+
 
         GameNode* child_node = nullptr;
 
@@ -246,55 +248,60 @@ void Solver::print_minimax_summary() const {
 //void Solver::print_optinal_sort() const {}
 
 
-void Solver::export_heatmap_csv(const std::vector<int>& board, int player, 
-                                const std::string& filename)const {
+void Solver::export_heatmap_csv(
+    const std::vector<int>& board, int player,
+    const std::string& filename) const
+{
     MiniGo1xN game(board, player);
     auto moves = game.get_legal_moves();
 
     std::ofstream ofs(filename);
-    ofs << "move,color,result_list\n";
+    ofs << "move,color,result\n";
 
     for (int mv : moves) {
+
         auto [next_game, captured] = game.make_move(mv);
-        HashKey child_hash = compute_hash(next_game.board, next_game.player);
+        HashKey h = compute_hash(next_game.board, next_game.player);
 
-        std::vector<int> results;
+        int child_winner = 0;
+        auto it = nodes.find(h);
+        if (it != nodes.end()) child_winner = it->second->winner;
 
-        // 子ノード探索
-        for (auto& [key, node_ptr] : nodes) {
-            if (key == child_hash) {
-                // 子ノードを探索
-                for (auto& child : node_ptr->children) {
-                    HashKey ck = std::stoull(child.first);
-                    auto it = nodes.find(ck);
-                    if (it != nodes.end()) {
-                        results.push_back(it->second->winner);
-                    }
-                }
-                break;
-            }
-        }
+        std::string color = "unknown";
 
-        // 分類
-        std::string color;
-        if (!results.empty()) {
-            bool all_win  = std::all_of(results.begin(), results.end(),
-                                        [&](int w){ return w == player; });
-            bool all_lose = std::all_of(results.begin(), results.end(),
-                                        [&](int w){ return w == -player; });
+        if (child_winner == player)
+            color = "green";
+        else if (child_winner == -player)
+            color = "red";
+        else
+            color = "yellow";
 
-            if (all_win)      color = "green";
-            else if (all_lose) color = "red";
-            else               color = "yellow";
-        } else {
-            color = "unknown";
-        }
-
-        ofs << mv << "," << color << ",[";
-        for (size_t i = 0; i < results.size(); ++i) {
-            ofs << results[i];
-            if (i + 1 < results.size()) ofs << " ";
-        }
-        ofs << "]\n";
+        ofs << mv << "," << color << "," << child_winner << "\n";
     }
+}
+
+
+// ★修正版: 盤面データをダブルクォートで囲んで出力する
+void Solver::export_all_nodes_csv(const std::string& filename) const {
+    std::ofstream file(filename);
+    // ヘッダー
+    file << "BoardStr,Player,Winner\n";
+
+    for (const auto& pair : nodes) {
+        const GameNode* node = pair.second.get();
+        
+        // 盤面を文字列化 (例: "0,0,1,-1,0")
+        std::string board_str = "";
+        for (size_t i = 0; i < node->board_state.size(); ++i) {
+            board_str += std::to_string(node->board_state[i]);
+            if (i < node->board_state.size() - 1) board_str += ",";
+        }
+
+        // CSV行を書き込み
+        // ★修正: board_str をダブルクォートで囲む ("0,0,0")
+        file << "\"" << board_str << "\"," 
+             << node->player_to_move << "," 
+             << node->winner << "\n";
+    }
+    std::cout << "Exported " << nodes.size() << " states to [" << filename << "]" << std::endl;
 }
