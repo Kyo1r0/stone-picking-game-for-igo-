@@ -282,26 +282,108 @@ void Solver::export_heatmap_csv(
 
 
 // ★修正版: 盤面データをダブルクォートで囲んで出力する
+// Solver.cpp の末尾にある export_all_nodes_csv をこれに置き換え
+
 void Solver::export_all_nodes_csv(const std::string& filename) const {
     std::ofstream file(filename);
-    // ヘッダー
-    file << "BoardStr,Player,Winner\n";
+    // Header: 
+    // RawBoard: 検索用キー (例: "0,0,1")
+    // HintBoard: 表示用データ (例: "g,r,1") g=Green(Win), r=Red(Lose), y=Draw, x=Suicide/Invalid
+    // Player, Winner
+    file << "RawBoard,HintBoard,Player,Winner\n";
 
     for (const auto& pair : nodes) {
         const GameNode* node = pair.second.get();
-        
-        // 盤面を文字列化 (例: "0,0,1,-1,0")
-        std::string board_str = "";
+        int current_player = node->player_to_move;
+
+        // 1. 検索用キー (RawBoard) の作成
+        std::string raw_board_str = "";
         for (size_t i = 0; i < node->board_state.size(); ++i) {
-            board_str += std::to_string(node->board_state[i]);
-            if (i < node->board_state.size() - 1) board_str += ",";
+            raw_board_str += std::to_string(node->board_state[i]);
+            if (i < node->board_state.size() - 1) raw_board_str += ",";
         }
 
-        // CSV行を書き込み
-        // ★修正: board_str をダブルクォートで囲む ("0,0,0")
-        file << "\"" << board_str << "\"," 
+        // 2. 表示用ヒント (HintBoard) の作成
+        // その局面から一時的なゲームインスタンスを作成して次の一手を検証
+        MiniGo1xN temp_game(node->board_state, current_player);
+        std::string hint_str = "";
+
+        for (size_t i = 0; i < node->board_state.size(); ++i) {
+            // 区切り文字
+            if (i > 0) hint_str += ",";
+
+            // すでに石がある場所 -> そのまま石の番号を入れる
+            if (node->board_state[i] != 0) {
+                hint_str += std::to_string(node->board_state[i]);
+                continue;
+            }
+
+            // 自殺手のチェック
+            // ※MiniGo1xNクラスのメソッドがpublicである前提です。
+            // もしprivateならSolver内で判定ロジックを書くか、MiniGo1xN.hでpublicに移動してください
+            // ここではSolver内で判定できる簡易ロジック、あるいは game.get_legal_moves() を使う手もありますが、
+            // 今回はシンプルに「打ってみて自殺判定」を行います。
+            
+            // --- シミュレーション ---
+            // ※MiniGo1xNのis_suicide等がprivateの場合は、Solverにfriend宣言するか、publicにしてください。
+            // ここでは提供されたコードに基づき、make_moveを使います。
+            
+            // "would_be_suicide" は private だったので、make_move の結果で判断する、
+            // もしくは一時的に MiniGo1xN.h で public に変更してもらうのが早いです。
+            // ★ここでは「MiniGo1xN.h の private メンバを public に変更した」と仮定して書きます。
+            // もし変更できない場合は、Solverクラス内にルールのロジックをコピーする必要があります。
+            
+            // 打ってみる
+            // (注: MiniGo1xNのメソッドがconstならコピーがいります)
+            // ここでは簡易的に、前回実装したSolver内のロジックを利用します。
+            
+            // --- 簡易シミュレーション (Solver内で完結させる) ---
+            auto [next_game, captured] = temp_game.make_move(i);
+            
+            // 自殺手判定（石が取れず、かつ自分の呼吸点がない）
+            bool is_suicide = false;
+            if (!captured) {
+                 // count_liberties は private なので、結果の盤面から判断するのは難しい...
+                 // ですが、Solverは計算済みなので、make_move が正しく実装されていれば
+                 // 合法手リストに含まれているかどうかで判定できます。
+            }
+
+            // 一番確実なのは、get_legal_movesに含まれているか確認することです
+            auto legal_moves = temp_game.get_legal_moves();
+            bool is_legal = false;
+            for(int m : legal_moves) { if(m == (int)i) is_legal = true; }
+
+            if (!is_legal) {
+                hint_str += "x"; // Suicide or Invalid
+                continue;
+            }
+
+            // --- ここから勝敗判定 ---
+            if (captured) {
+                // 取ったら勝ち
+                hint_str += "g"; 
+            } else {
+                // 子ノードのハッシュを計算
+                HashKey next_key = compute_hash(next_game.board, next_game.player);
+                
+                if (nodes.count(next_key)) {
+                    int child_winner = nodes.at(next_key)->winner;
+                    if (child_winner == current_player) hint_str += "g"; // Win
+                    else if (child_winner == -current_player) hint_str += "r"; // Lose
+                    else hint_str += "y"; // Draw
+                } else {
+                    // 終局図などが登録されていない場合（通常ありえないが）
+                    // 相手が打つ手なしで負け＝自分勝ち
+                    hint_str += "g"; 
+                }
+            }
+        }
+
+        // CSV書き出し
+        file << "\"" << raw_board_str << "\",\"" 
+             << hint_str << "\"," 
              << node->player_to_move << "," 
              << node->winner << "\n";
     }
-    std::cout << "Exported " << nodes.size() << " states to [" << filename << "]" << std::endl;
+    std::cout << "Exported analyzed map to [" << filename << "]" << std::endl;
 }
