@@ -46,7 +46,7 @@ class MiniGoLogic:
 
 # --- メイン処理 ---
 def main():
-    print("=== MiniGo 1xN Navigator (Rule Enforced) ===")
+    print("=== MiniGo 1xN Navigator (Rule Enforced + Undo) ===")
     try:
         n_input = input("Board Size N: ")
         if not n_input: return
@@ -83,6 +83,9 @@ def main():
     game = MiniGoLogic(n)
     current_board = tuple([0] * n)
     current_player = 1 # 1:Black, -1:White
+    
+    # ★追加: 履歴保存用リスト
+    history = []
 
     while True:
         p_name = "Black(●)" if current_player == 1 else "White(○)"
@@ -127,11 +130,12 @@ def main():
         print("-" * 40)
         
         # --- 3. 終了条件チェック (A): 打つ手がない ---
-        # g, r, y のいずれかがあれば打てる手がある。すべて x または - なら打つ手なし。
         can_move = any(h in ['g', 'r', 'y'] for h in hints)
         
         if not can_move:
             print(f"No legal moves available! {p_name} LOSES.")
+            # 負けた場合でも、戻りたくなるかもしれないので break せずに入力を待つ手もあるが、
+            # ここではシンプルに終了とする（戻りたければ再起動）
             print("=== GAME OVER ===")
             break
 
@@ -139,8 +143,21 @@ def main():
         print("Index: " + "".join([f"  {i}    " for i in range(n)]))
 
         # --- 4. 入力 ---
-        move_str = input("\nYour move (0-N, 'q' to quit): ")
-        if move_str.lower() == 'q': break
+        move_str = input("\nYour move (0-N, 'b' to back, 'q' to quit): ")
+        
+        # 終了
+        if move_str.lower() == 'q': 
+            break
+            
+        # ★追加: 戻る処理
+        if move_str.lower() == 'b':
+            if history:
+                current_board, current_player = history.pop()
+                print("<< Undo one step.")
+                continue
+            else:
+                print("Cannot undo (Start of game).")
+                continue
         
         try:
             move = int(move_str)
@@ -153,6 +170,9 @@ def main():
                     continue
                 
                 # --- 5. 手を打って判定 ---
+                # ★追加: 手を打つ前に履歴に保存
+                history.append((current_board, current_player))
+                
                 new_board, captured = game.make_move(current_board, move, current_player)
                 
                 # --- 6. 終了条件チェック (B): 石を取った ---
