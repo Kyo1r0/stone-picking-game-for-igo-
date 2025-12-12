@@ -1,0 +1,61 @@
+\documentclass[a4paper,11pt]{article}
+
+\usepackage{amsmath,amssymb,amsthm}
+
+\title{一次元キャプチャ碁 $G_N$ の定義}
+\author{}
+\date{}
+
+\theoremstyle{definition}
+\newtheorem{definition}{定義}
+
+\begin{document}
+
+\maketitle
+
+\begin{definition}[一次元Capture go $G_N$]
+自然数 $N$ に対し，以下のルールセット$G_N$とする。
+
+\begin{itemize}
+    \item \textbf{盤面:} 
+
+    \[
+        V = \{1,2,\dots, N\}
+    \]
+    を盤面とする。
+
+    \item \textbf{状態:}
+    各頂点 $v \in V$ は値
+    \[
+        s(v) \in \{0, B, W\}
+    \]
+    を取り，それぞれ空点（$0$），黒石（$B$），白石（$W$）を表す。
+    初期状態は
+    \[
+        s(v)=0 \qquad (v\in V)
+    \]
+    とする。
+
+    \item \textbf{手番と着手:}
+    黒（先手）と白（後手）は交互に手番を持ち，
+    \[
+        s(v)=0
+    \]
+    を満たす頂点を 1 つ選び，自色の石を置く。
+
+    \item \textbf{捕獲（勝利条件 1）:}
+    着手直後，相手色の石が形成する連結成分（連）を $C$ とする。
+    その呼吸点（隣接する空点）が
+    \[
+        \Lambda(C) = \varnothing
+    \]
+    となった場合，その連は取り除かれ，この状況が発生した手番プレイヤーを勝者とする。
+    すなわち，捕獲が生じた瞬間に即時勝利とする。
+
+    \item \textbf{着手不能（勝利条件 2）:}
+    自殺手（自分の石の連の呼吸点を 0 にする着手）を除き，合法手が存在しない場合，
+    手番プレイヤーの敗北とする。
+\end{itemize}
+\end{definition}
+
+\end{document}
