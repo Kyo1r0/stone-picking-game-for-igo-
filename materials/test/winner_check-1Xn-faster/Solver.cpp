@@ -105,32 +105,38 @@ int Solver::alpha_beta(const MiniGo1xN& game, int alpha, int beta) {
 // 初期盤面の各手の評価を一覧化する便利関数
 std::string Solver::analyze_initial_moves(int n) {
     std::vector<int> board(n, 0);
-    MiniGo1xN game(board, 1); // 黒番
+    MiniGo1xN game(board, 1);
     std::string result = "";
+
+    // ★ ここで1回だけ初期化
+    transposition_table.clear();
+    node_count = 0;
 
     for (int i = 0; i < n; ++i) {
         if (i > 0) result += ",";
 
-        // 自殺手チェック
-        if (game.would_be_suicide(i)) { // ※MiniGo1xNに is_suicide(int pos) を追加する必要があります
-            result += "x"; // Illegal
+        if (game.would_be_suicide(i)) {
+            result += "x";
             continue;
         }
 
         auto [next_game, captured] = game.make_move(i);
-        
-        // 打ってすぐ取れるなら勝ち
+
         if (captured) {
-            result += "g"; // Green (Win)
+            result += "g";
         } else {
-            // 相手番で探索
-            // 相手が勝つ(1)なら自分は負け(r)、相手が負ける(-1)なら自分は勝ち(g)
-            // Solver::solve は「その手番のプレイヤーから見た結果」を返す
-            int res = solve(next_game.board, next_game.player);
-            
-            if (res == -1) result += "g"; // 相手が負ける -> 自分勝ち
-            else result += "r";           // 相手が勝つ -> 自分負け
+            // ★ solve() を使わない
+            int res = eval(next_game);
+
+            if (res == -1) result += "g";
+            else result += "r";
         }
     }
     return result;
+}
+
+
+// solve() の下あたりに追加
+int Solver::eval(const MiniGo1xN& game) {
+    return alpha_beta(game, -2, 2);
 }

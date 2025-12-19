@@ -21,6 +21,10 @@ public:
 
     size_t get_node_count() const { return node_count; }
 
+    // Solver.h の public に追加
+int eval(const MiniGo1xN& game);
+
+
 private:
     // メモ化テーブル (盤面ハッシュ -> 勝敗 1 or -1)
     std::unordered_map<HashKey, int> transposition_table;
