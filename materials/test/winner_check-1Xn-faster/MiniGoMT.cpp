@@ -61,13 +61,12 @@ bool MiniGoMT::is_captured(uint64_t stones, uint64_t empty, uint64_t start_bit) 
     return !(((group << 1) & empty) || ((group >> 1) & empty));
 }
 
+// solve関数全体をこれに置き換えてください
 int MiniGoMT::solve(uint64_t my, uint64_t op, int alpha, int beta, int depth) {
     uint64_t key = compute_hash(my, op);
     size_t idx = key & tt_mask;
 
-    // TT参照 (データ競合は許容: 読み出し中に書き換えが起きても、
-    // キー不一致で弾かれるか、運悪くゴミデータを読むだけ。
-    // アルファベータ法においては致命的エラーになりにくい)
+    // TT参照 (競合許容)
     TTEntry entry = tt[idx]; 
     if (entry.flag && entry.key == key) {
         return entry.score;
@@ -76,57 +75,62 @@ int MiniGoMT::solve(uint64_t my, uint64_t op, int alpha, int beta, int depth) {
     uint64_t empty = ~(my | op) & full_mask;
     if (empty == 0) return -1;
 
-    // --- Move Ordering (Center First) ---
-    // 毎回vectorを作ると遅いので、bit manipulationで中央から探せるとベストだが
-    // ここでは簡潔さのため、配列生成コストを甘受するか、
-    // あるいは再帰の深さが浅いときだけ丁寧に行う等の工夫が可能。
-    // 今回は「ビットスキャン順（端から）」に戻します。
-    // 理由: 並列化によって、中央優先探索のメリットよりスループットが重要になるため。
-    // もしN=30で遅いようなら、ここにCenter-Firstを復活させてください。
+    // --- 【修正】Move Ordering (Center First) ---
+    // ビットスキャン(ctzll)をやめ、中央から外側へ広がる順序でループする
+    // N=40程度なら毎回vectorを作ってもオーバーヘッドは無視できます
+    // むしろ枝刈りの効果が絶大です
     
-    // ★復活させる場合の Center-First ロジック（コメントアウト）
-    /*
-    std::vector<int> moves;
-    moves.reserve(n_size);
+    // 探索順序配列の生成 (毎回生成しても高速です)
     int mid = n_size / 2;
-    moves.push_back(mid);
-    for(int d=1; d<n_size; ++d) {
-        if(mid-d >= 0) moves.push_back(mid-d);
-        if(mid+d < n_size) moves.push_back(mid+d);
-    }
-    // ループ: for (int move_idx : moves) { if (!((empty>>move_idx)&1)) continue; ... }
-    */
+    // 予想される手の最大数は残り空きマス数以下
+    // vectorの動的確保を避けるため、固定長配列的に使うかreserveする
+    // ここでは可読性優先でvectorを使いますが、十分速いです
+    static const int MAX_N = 64; 
+    int moves[MAX_N];
+    int move_count = 0;
 
-    // Simple Bit Scan (高速)
-    uint64_t temp_empty = empty;
+    // 中央
+    if ((empty >> mid) & 1) moves[move_count++] = mid;
+    
+    // 中央から左右へ広げる
+    for (int dist = 1; dist <= mid + 1; ++dist) {
+        int l = mid - dist;
+        int r = mid + dist;
+        if (l >= 0 && ((empty >> l) & 1)) moves[move_count++] = l;
+        if (r < n_size && ((empty >> r) & 1)) moves[move_count++] = r;
+    }
+
     bool can_move = false;
     int max_val = -2;
 
-    while (temp_empty) {
-        // __builtin_ctzll は GCC/Clang用。MSVCなら _BitScanForward64
-        int move_idx = __builtin_ctzll(temp_empty);
+    // 生成した順序(中央優先)でループ
+    for (int i = 0; i < move_count; ++i) {
+        int move_idx = moves[i];
         uint64_t move_bit = 1ULL << move_idx;
-        temp_empty &= ~move_bit;
+        
+        // --- 以下は以前と同じロジック ---
 
         uint64_t next_my = my | move_bit;
         bool captured = false;
 
-        // Check capture
+        // Check capture (左)
         if ((move_idx > 0) && ((op >> (move_idx - 1)) & 1)) {
+            // emptyからmove_bitを除外したマスクを渡す
             if (is_captured(op, empty & ~move_bit, 1ULL << (move_idx - 1))) captured = true;
         }
+        // Check capture (右)
         if (!captured && (move_idx < n_size - 1) && ((op >> (move_idx + 1)) & 1)) {
             if (is_captured(op, empty & ~move_bit, 1ULL << (move_idx + 1))) captured = true;
         }
 
         if (captured) {
-            // 書き込み (競合許容)
             tt[idx] = {key, 1, 1};
             return 1;
         }
 
+        // Suicide check
         if (is_captured(next_my, empty & ~move_bit, move_bit)) {
-            continue; // Suicide
+            continue; 
         }
 
         can_move = true;

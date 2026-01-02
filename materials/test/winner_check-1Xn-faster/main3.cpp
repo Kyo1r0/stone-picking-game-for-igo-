@@ -13,7 +13,7 @@ int main() {
 
     // メモリ量に合わせてTTサイズビット数を調整 (27 = 2GB, 24 = 256MB)
     // お使いのPCメモリが16GB以上なら 27 か 28 を推奨
-    MiniGoMT solver(27); 
+    MiniGoMT solver(28); 
 
     std::string filename = "analysis_mt_" + std::to_string(from) + "-" + std::to_string(to) + ".csv";
     std::ofstream ofs(filename);
