@@ -75,8 +75,58 @@ bool MiniGoBit::is_captured(uint64_t stones, uint64_t empty, uint64_t start_bit)
     return !has_liberty;
 }
 
+
+// MiniGoBit.cpp
+
+// ---------------------------------------------------------
+// analyze 関数を修正 (探索順序の生成を追加)
+// ---------------------------------------------------------
+std::string MiniGoBit::analyze(int n) {
+    n_size = n;
+    full_mask = (1ULL << n) - 1;
+    clear_tt();
+
+    // ★追加: 中央から外側に向かう探索順序を生成
+    move_order.clear();
+    move_order.reserve(n);
+    int mid = n / 2;
+    move_order.push_back(mid);
+    for (int dist = 1; dist < n; ++dist) {
+        if (mid - dist >= 0) move_order.push_back(mid - dist);
+        if (mid + dist < n)  move_order.push_back(mid + dist);
+    }
+    // ------------------------------------------------
+
+    std::string result = "";
+    
+    // ここも move_order 順に調べたほうが「解析結果」は早く出始めますが、
+    // 文字列の並び順(0〜N-1)を維持したいので、あえて普通のループのままにします
+    for (int i = 0; i < n; ++i) {
+        // ... (既存のコードと同じ)
+        uint64_t move_bit = 1ULL << i;
+        uint64_t my = move_bit;
+        uint64_t op = 0;
+        uint64_t empty = full_mask & ~move_bit;
+
+        if (is_captured(my, empty, move_bit)) {
+            result += "x"; 
+            continue;
+        }
+
+        // 探索呼び出し
+        int score = -solve(op, my, -1, 1, 1);
+        
+        if (score == 1) result += "g"; 
+        else result += "r";            
+    }
+    return result;
+}
+
+// ---------------------------------------------------------
+// solve 関数を修正 (ビットスキャンをやめて move_order ループへ)
+// ---------------------------------------------------------
 int MiniGoBit::solve(uint64_t my, uint64_t op, int alpha, int beta, int depth) {
-    // 1. 置換表 (Transposition Table) 参照
+    // 1. 置換表参照 (変更なし)
     uint64_t key = compute_hash(my, op);
     size_t idx = key & (tt.size() - 1);
     
@@ -84,49 +134,34 @@ int MiniGoBit::solve(uint64_t my, uint64_t op, int alpha, int beta, int depth) {
         return tt[idx].score;
     }
 
-    // 2. 合法手の生成と探索
-    // 空点かつ、打てる場所を探す
     uint64_t empty = ~(my | op) & full_mask;
-    
-    // 合法手が一つもない場合 -> 負け
-    if (empty == 0) {
-        return -1;
-    }
+    if (empty == 0) return -1;
 
     bool can_move = false;
-    int max_val = -2; // 負け(-1)より小さい値で初期化
+    int max_val = -2; 
 
-    // ビットスキャンで空きマスを走査
-    // temp_emptyをコピーして操作する
-    uint64_t temp_empty = empty;
-    while (temp_empty) {
-        // 最下位ビットのインデックスを取得 (GCC/Clang built-in)
-        // MSVCなら _BitScanForward64 を使う
-        int move_idx = __builtin_ctzll(temp_empty);
+    // ★修正: while(temp_empty) をやめて、move_order でループする
+    // これにより「中央付近」から優先的に探索される
+    for (int move_idx : move_order) {
         uint64_t move_bit = 1ULL << move_idx;
-        
-        // 調べたビットを消す
-        temp_empty &= ~move_bit;
 
-        // --- 着手 ---
-        uint64_t next_my = my | move_bit;
+        // 空きマスでなければスキップ
+        if (!((empty >> move_idx) & 1)) {
+            continue;
+        }
+
+        // --- 以下、以前のロジックと同じ ---
         
-        // --- 勝利判定 (捕獲) ---
-        // 自分の石を置いたことで、隣接する相手の石が死んだか？
+        uint64_t next_my = my | move_bit;
         bool captured = false;
         
-        // 左隣のチェック
+        // 左隣
         if ((move_idx > 0) && ((op >> (move_idx - 1)) & 1)) {
-            // 左隣に相手がいる。その相手グループは死んでいるか？
-            // 自分の石が増えたので、現在の empty から move_bit が減った状態を渡す必要はない
-            // is_captured関数は stones と empty のマスクのみで判定する
-            // ここでの empty は「現在の盤面の空」なので、move_bit は既に埋まっているとみなす必要がある
-            // つまり is_captured の empty 引数は (empty & ~move_bit)
             if (is_captured(op, empty & ~move_bit, 1ULL << (move_idx - 1))) {
                 captured = true;
             }
         }
-        // 右隣のチェック (capturedが決まっていない場合のみ)
+        // 右隣
         if (!captured && (move_idx < n_size - 1) && ((op >> (move_idx + 1)) & 1)) {
             if (is_captured(op, empty & ~move_bit, 1ULL << (move_idx + 1))) {
                 captured = true;
@@ -134,73 +169,35 @@ int MiniGoBit::solve(uint64_t my, uint64_t op, int alpha, int beta, int depth) {
         }
 
         if (captured) {
-            // 相手の石を取ったら即勝ちのルール
             tt[idx] = {key, 1, 1};
             return 1;
         }
 
-        // --- 自殺手のチェック ---
-        // 相手を取れなかった場合、自分が死んでしまう手は打てない
         if (is_captured(next_my, empty & ~move_bit, move_bit)) {
-            continue; // Illegal move (Suicide)
+            continue; 
         }
 
-        // --- 再帰探索 ---
         can_move = true;
-        // 相手の手番へ (op と next_my を入れ替える)
         int score = -solve(op, next_my, -beta, -alpha, depth + 1);
 
         if (score > max_val) {
             max_val = score;
-            // Beta Cutoff
             if (score >= beta) {
                 tt[idx] = {key, (int16_t)score, 1};
                 return score;
             }
-            // Alpha update
             if (score > alpha) {
                 alpha = score;
             }
         }
     }
+    // ループ終了
 
     if (!can_move) {
-        // 打てる場所がすべて自殺手だった場合 -> 負け
         tt[idx] = {key, -1, 1};
         return -1;
     }
 
     tt[idx] = {key, (int16_t)max_val, 1};
     return max_val;
-}
-
-std::string MiniGoBit::analyze(int n) {
-    n_size = n;
-    full_mask = (1ULL << n) - 1;
-    clear_tt(); // 新しいNのためにテーブルをクリア
-
-    std::string result = "";
-    
-    // 初手 i のループ
-    for (int i = 0; i < n; ++i) {
-        uint64_t move_bit = 1ULL << i;
-        uint64_t my = move_bit;
-        uint64_t op = 0;
-        uint64_t empty = full_mask & ~move_bit;
-
-        // 自殺手チェック (初手で自殺手はありえないが、念のため)
-        if (is_captured(my, empty, move_bit)) {
-            result += "x"; // Illegal
-            continue;
-        }
-
-        // 初手で捕獲は発生しない (相手がいないため)
-        
-        // 相手の手番として探索開始
-        int score = -solve(op, my, -1, 1, 1);
-        
-        if (score == 1) result += "g"; // Win (勝ち)
-        else result += "r";            // Lose (負け)
-    }
-    return result;
 }

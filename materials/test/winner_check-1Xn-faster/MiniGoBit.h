@@ -43,4 +43,7 @@ private:
 
     // 盤面のハッシュ値を計算
     uint64_t compute_hash(uint64_t my, uint64_t op) const;
+
+    // private メンバに追加してください
+    std::vector<int> move_order;
 };
