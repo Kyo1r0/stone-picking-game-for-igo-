@@ -2,13 +2,38 @@
 #include <algorithm>
 #include <random>
 #include <cstring>
-#include <future> // マルチスレッド用
+#include <future>
 #include <thread>
 #include <iostream>
 
+#if defined(_MSC_VER)
+#include <intrin.h>
+#pragma intrinsic(_BitScanForward64)
+#pragma intrinsic(_BitScanReverse64)
+#endif
+
+// ビットスキャン関数のラッパー
+inline int bit_scan_forward(uint64_t b) {
+#if defined(_MSC_VER)
+    unsigned long index;
+    _BitScanForward64(&index, b);
+    return (int)index;
+#else
+    return __builtin_ctzll(b);
+#endif
+}
+
+inline int bit_scan_reverse(uint64_t b) {
+#if defined(_MSC_VER)
+    unsigned long index;
+    _BitScanReverse64(&index, b);
+    return (int)index;
+#else
+    return 63 - __builtin_clzll(b);
+#endif
+}
+
 MiniGoMT::MiniGoMT(int tt_bits) {
-    // メモリに合わせてサイズ調整 (例: 2^27 = 1.3億エントリ = 約2GB)
-    // 搭載メモリに余裕があれば 27 や 28 に増やしてください
     size_t size = 1ULL << tt_bits;
     tt.resize(size);
     tt_mask = size - 1;
@@ -26,8 +51,6 @@ void MiniGoMT::init_zobrist() {
 }
 
 void MiniGoMT::clear_tt() {
-    // 並列実行前にリセット
-    // memsetは高速ですが、TTEntryがPOD型(単純構造体)である必要があります
     std::memset(tt.data(), 0, tt.size() * sizeof(TTEntry));
 }
 
@@ -37,7 +60,6 @@ uint64_t MiniGoMT::compute_hash(uint64_t my, uint64_t op) const {
         if ((my >> i) & 1) h1 ^= zobrist_my[i];
         if ((op >> i) & 1) h1 ^= zobrist_op[i];
     }
-    // 左右対称性の正規化
     uint64_t h2 = 0;
     for (int i = 0; i < n_size; ++i) {
         int rev_i = n_size - 1 - i;
@@ -47,26 +69,38 @@ uint64_t MiniGoMT::compute_hash(uint64_t my, uint64_t op) const {
     return std::min(h1, h2);
 }
 
-// 高速化された is_captured (変更なし)
+// ★改良: ループなしで O(1) で判定
 bool MiniGoMT::is_captured(uint64_t stones, uint64_t empty, uint64_t start_bit) const {
-    uint64_t group = start_bit;
-    while (true) {
-        uint64_t expanded = group;
-        expanded |= (group << 1) & stones;
-        expanded |= (group >> 1) & stones;
-        expanded &= full_mask;
-        if (expanded == group) break;
-        group = expanded;
-    }
-    return !(((group << 1) & empty) || ((group >> 1) & empty));
+    // stones: チェック対象の色の石
+    // 境界(壁または相手の石または空)を探す
+    // boundaries = 「自分の石ではない場所」のビットマスク
+    uint64_t boundaries = (~stones) & full_mask;
+    
+    int idx = bit_scan_forward(start_bit);
+
+    // 左側の境界を探す (idxより小さいビットで、boundariesが立っている最大の場所)
+    // mask: idxより下位のビットのみ1
+    uint64_t left_mask = (1ULL << idx) - 1;
+    uint64_t left_bounds = boundaries & left_mask;
+    int l_boundary_idx = (left_bounds == 0) ? -1 : bit_scan_reverse(left_bounds);
+
+    // 右側の境界を探す (idxより大きいビットで、boundariesが立っている最小の場所)
+    // mask: idx+1より上位のビットのみ1
+    uint64_t right_mask = ~((1ULL << (idx + 1)) - 1);
+    uint64_t right_bounds = boundaries & right_mask;
+    int r_boundary_idx = (right_bounds == 0) ? n_size : bit_scan_forward(right_bounds);
+
+    // 境界が「空点」であれば呼吸点あり
+    bool lib_left = (l_boundary_idx != -1) && ((empty >> l_boundary_idx) & 1);
+    bool lib_right = (r_boundary_idx != n_size) && ((empty >> r_boundary_idx) & 1);
+
+    return !(lib_left || lib_right);
 }
 
-// solve関数全体をこれに置き換えてください
 int MiniGoMT::solve(uint64_t my, uint64_t op, int alpha, int beta, int depth) {
     uint64_t key = compute_hash(my, op);
     size_t idx = key & tt_mask;
 
-    // TT参照 (競合許容)
     TTEntry entry = tt[idx]; 
     if (entry.flag && entry.key == key) {
         return entry.score;
@@ -75,75 +109,68 @@ int MiniGoMT::solve(uint64_t my, uint64_t op, int alpha, int beta, int depth) {
     uint64_t empty = ~(my | op) & full_mask;
     if (empty == 0) return -1;
 
-    // --- 【修正】Move Ordering (Center First) ---
-    // ビットスキャン(ctzll)をやめ、中央から外側へ広がる順序でループする
-    // N=40程度なら毎回vectorを作ってもオーバーヘッドは無視できます
-    // むしろ枝刈りの効果が絶大です
-    
-    // 探索順序配列の生成 (毎回生成しても高速です)
-    int mid = n_size / 2;
-    // 予想される手の最大数は残り空きマス数以下
-    // vectorの動的確保を避けるため、固定長配列的に使うかreserveする
-    // ここでは可読性優先でvectorを使いますが、十分速いです
-    static const int MAX_N = 64; 
-    int moves[MAX_N];
-    int move_count = 0;
-
-    // 中央
-    if ((empty >> mid) & 1) moves[move_count++] = mid;
-    
-    // 中央から左右へ広げる
-    for (int dist = 1; dist <= mid + 1; ++dist) {
-        int l = mid - dist;
-        int r = mid + dist;
-        if (l >= 0 && ((empty >> l) & 1)) moves[move_count++] = l;
-        if (r < n_size && ((empty >> r) & 1)) moves[move_count++] = r;
-    }
+    // ★改良: 動的な Neighbor Priority
+    // 1. 相手の石の隣 (攻撃・防御の急所)
+    uint64_t op_adj = ((op << 1) | (op >> 1)) & empty;
+    // 2. 自分の石の隣 (連結・眼作り)
+    uint64_t my_adj = ((my << 1) | (my >> 1)) & empty & ~op_adj;
+    // 3. その他 (飛び石)
+    uint64_t rest = empty & ~(op_adj | my_adj);
 
     bool can_move = false;
     int max_val = -2;
 
-    // 生成した順序(中央優先)でループ
-    for (int i = 0; i < move_count; ++i) {
-        int move_idx = moves[i];
-        uint64_t move_bit = 1ULL << move_idx;
-        
-        // --- 以下は以前と同じロジック ---
+    // ラムダ式で探索ロジックを共通化 (インライン展開される)
+    auto process_moves = [&](uint64_t moves_mask) -> int {
+        while (moves_mask) {
+            int move_idx = bit_scan_forward(moves_mask);
+            uint64_t move_bit = 1ULL << move_idx;
+            moves_mask &= ~move_bit;
 
-        uint64_t next_my = my | move_bit;
-        bool captured = false;
+            uint64_t next_my = my | move_bit;
+            bool captured = false;
 
-        // Check capture (左)
-        if ((move_idx > 0) && ((op >> (move_idx - 1)) & 1)) {
-            // emptyからmove_bitを除外したマスクを渡す
-            if (is_captured(op, empty & ~move_bit, 1ULL << (move_idx - 1))) captured = true;
-        }
-        // Check capture (右)
-        if (!captured && (move_idx < n_size - 1) && ((op >> (move_idx + 1)) & 1)) {
-            if (is_captured(op, empty & ~move_bit, 1ULL << (move_idx + 1))) captured = true;
-        }
-
-        if (captured) {
-            tt[idx] = {key, 1, 1};
-            return 1;
-        }
-
-        // Suicide check
-        if (is_captured(next_my, empty & ~move_bit, move_bit)) {
-            continue; 
-        }
-
-        can_move = true;
-        int score = -solve(op, next_my, -beta, -alpha, depth + 1);
-
-        if (score > max_val) {
-            max_val = score;
-            if (score >= beta) {
-                tt[idx] = {key, (int16_t)score, 1};
-                return score;
+            // 捕獲チェック (move_idxの隣だけ見れば良い)
+            if ((move_idx > 0) && ((op >> (move_idx - 1)) & 1)) {
+                if (is_captured(op, empty & ~move_bit, 1ULL << (move_idx - 1))) captured = true;
             }
-            if (score > alpha) alpha = score;
+            if (!captured && (move_idx < n_size - 1) && ((op >> (move_idx + 1)) & 1)) {
+                if (is_captured(op, empty & ~move_bit, 1ULL << (move_idx + 1))) captured = true;
+            }
+
+            if (captured) {
+                return 1; // 勝ち確定シグナル
+            }
+
+            // 自殺手チェック
+            if (is_captured(next_my, empty & ~move_bit, move_bit)) {
+                continue;
+            }
+
+            can_move = true;
+            int score = -solve(op, next_my, -beta, -alpha, depth + 1);
+
+            if (score > max_val) {
+                max_val = score;
+                if (score >= beta) return 2; // Beta Cutoffシグナル
+                if (score > alpha) alpha = score;
+            }
         }
+        return 0; // 続行
+    };
+
+    // 優先順位に従って実行
+    if (int res = process_moves(op_adj)) {
+        if (res == 1) { tt[idx] = {key, 1, 1}; return 1; }
+        if (res == 2) { tt[idx] = {key, (int16_t)max_val, 1}; return max_val; }
+    }
+    if (int res = process_moves(my_adj)) {
+        if (res == 1) { tt[idx] = {key, 1, 1}; return 1; }
+        if (res == 2) { tt[idx] = {key, (int16_t)max_val, 1}; return max_val; }
+    }
+    if (int res = process_moves(rest)) {
+        if (res == 1) { tt[idx] = {key, 1, 1}; return 1; }
+        if (res == 2) { tt[idx] = {key, (int16_t)max_val, 1}; return max_val; }
     }
 
     if (!can_move) {
@@ -161,9 +188,8 @@ std::string MiniGoMT::analyze_parallel(int n) {
     clear_tt();
 
     std::string result(n, ' ');
-    int half_n = (n + 1) / 2; // 対称性があるので半分だけ計算
+    int half_n = (n + 1) / 2;
 
-    // タスクの定義
     auto task_func = [&](int i) -> char {
         uint64_t move_bit = 1ULL << i;
         uint64_t my = move_bit;
@@ -172,29 +198,20 @@ std::string MiniGoMT::analyze_parallel(int n) {
 
         if (is_captured(my, empty, move_bit)) return 'x';
 
-        // Solver呼び出し
         int score = -solve(op, my, -1, 1, 1);
         return (score == 1) ? 'g' : 'r';
     };
 
-    // Futureリスト（非同期タスクの結果受け取り用）
     std::vector<std::future<char>> futures;
-
-    // 半分だけ並列起動
     for (int i = 0; i < half_n; ++i) {
         futures.push_back(std::async(std::launch::async, task_func, i));
     }
 
-    // 結果回収
     for (int i = 0; i < half_n; ++i) {
         result[i] = futures[i].get();
     }
-
-    // 対称性を利用して残りを埋める
-    // 例: N=5, 結果 "rrg" -> "rrgrr"
     for (int i = half_n; i < n; ++i) {
         result[i] = result[n - 1 - i];
     }
-
     return result;
 }
